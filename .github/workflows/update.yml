@@ -1,0 +1,70 @@
+name: Update stable SFL
+on:
+  schedule:
+    - cron: '23 2 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: update-stable
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+      revision: ${{ steps.diff.outputs.revision }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - run: python3 scripts/update.py
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - run: nix flake lock
+      - id: diff
+        run: |
+          echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          if test -n "$(git status --porcelain sources.json flake.lock)"; then
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: updated-sources
+          path: |
+            sources.json
+            flake.lock
+  build:
+    needs: prepare
+    if: needs.prepare.outputs.changed == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: updated-sources
+      - uses: cachix/install-nix-action@v31
+      - run: nix flake check --print-build-logs
+      - run: nix build --print-build-logs
+      - run: ./result/lib/sfl/resources/daemon/sing-box-daemon --help
+  commit:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: updated-sources
+      - run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sources.json flake.lock
+          git commit -m "chore: update stable SFL to $(python3 -c 'import json; print(json.load(open("sources.json"))["version"])')"
+          git push origin HEAD:main

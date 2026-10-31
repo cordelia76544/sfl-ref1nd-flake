@@ -1,0 +1,13 @@
+{
+  "version": "1.14.4-reF1nd",
+  "sources": {
+    "x86_64-linux": {
+      "url": "https://github.com/reF1nd/sing-box-releases/releases/download/v1.14.4-reF1nd/SFL-1.14.4-reF1nd-amd64.deb",
+      "hash": "sha256-LyRSloXbYFOfROSNiFMek+6SfkYzKP12lvG2ISiOtVw="
+    },
+    "aarch64-linux": {
+      "url": "https://github.com/reF1nd/sing-box-releases/releases/download/v1.14.4-reF1nd/SFL-1.14.4-reF1nd-arm64.deb",
+      "hash": "sha256-78MWLozxTve7y0yMPi5xhu2PlBtXILZsRImxS7lIX98="
+    }
+  }
+}
