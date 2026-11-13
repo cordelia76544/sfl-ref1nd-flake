@@ -1,0 +1,14 @@
+{
+  "version": "0.1.0-beta.6",
+  "doonaVersion": "0.1.0-rc.6",
+  "sources": {
+    "x86_64-linux": {
+      "url": "https://github.com/daeuniverse/honk/releases/download/v0.1.0-beta.6/honk-core-v0.1.0-beta.6-x86_64-unknown-linux-musl-full.tar.gz",
+      "hash": "sha256-J4O48IVvwa7NHNHZEdmpBMWTzVB89h5fok+9cHUxckQ="
+    },
+    "aarch64-linux": {
+      "url": "https://github.com/daeuniverse/honk/releases/download/v0.1.0-beta.6/honk-core-v0.1.0-beta.6-aarch64-unknown-linux-musl-full.tar.gz",
+      "hash": "sha256-XkwDWZUODxn6xT4x75/76fCq/KkjMcP6geW1YhKVCm4="
+    }
+  }
+}

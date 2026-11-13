@@ -1,0 +1,74 @@
+name: Update honk and paired doona
+on:
+  schedule:
+    - cron: '53 2 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  # Serialize metadata publication with the SFL updater.
+  group: update-packages
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+      revision: ${{ steps.diff.outputs.revision }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s tests
+      - run: python3 scripts/update-honk.py
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - id: diff
+        run: |
+          echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          if test -n "$(git status --porcelain honk/sources.json)"; then
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: updated-honk-sources
+          path: honk/sources.json
+  build:
+    needs: prepare
+    if: needs.prepare.outputs.changed == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            system: x86_64-linux
+          - runner: ubuntu-24.04-arm
+            system: aarch64-linux
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: updated-honk-sources
+          path: honk
+      - uses: cachix/install-nix-action@v31
+      - run: nix build .#honk --print-build-logs
+      - run: nix build '.#checks.${{ matrix.system }}.honk-module' --no-link --print-build-logs
+      - run: python3 scripts/check-honk.py ./result/bin/honk-core
+  commit:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: updated-honk-sources
+          path: honk
+      - run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add honk/sources.json
+          git commit -m "chore: update honk to $(python3 -c 'import json; print(json.load(open("honk/sources.json"))["version"])')"
+          git push origin HEAD:main

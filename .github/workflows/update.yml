@@ -6,7 +6,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: update-stable
+  group: update-packages
   cancel-in-progress: false
 jobs:
   prepare:
@@ -68,3 +68,4 @@ jobs:
           git add sources.json flake.lock
           git commit -m "chore: update stable SFL to $(python3 -c 'import json; print(json.load(open("sources.json"))["version"])')"
           git push origin HEAD:main
+
