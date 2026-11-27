@@ -66,21 +66,19 @@ class HonkTray(Gtk.Application):
             return
         self.hold()
         self.menu = Gtk.Menu()
-        self.status = self.item('正在读取服务状态…')
-        self.status.set_sensitive(False)
+        self.status = self.item('正在读取服务状态…', lambda *_: self.refresh())
         self.menu.append(Gtk.SeparatorMenuItem())
         self.start = self.item('启动 honk', lambda *_: self.action('start'))
         self.stop = self.item('停止 honk', lambda *_: self.action('stop'))
         self.restart = self.item('重启 honk', lambda *_: self.action('restart'))
-        for item in (self.start, self.stop, self.restart):
-            item.set_sensitive(False)
         self.menu.append(Gtk.SeparatorMenuItem())
         self.item('打开 doona', self.open_ui)
         self.item('查看服务日志', self.show_logs)
-        self.item('刷新状态', lambda *_: self.refresh())
         self.menu.append(Gtk.SeparatorMenuItem())
         self.item('退出托盘（不停止服务）', lambda *_: self.quit())
         self.menu.show_all()
+        for item in (self.start, self.stop, self.restart):
+            item.hide()
         self.indicator = Indicator.Indicator.new_with_path(
             'honk-tray', 'honk-stopped', Indicator.IndicatorCategory.APPLICATION_STATUS, ICONS)
         self.indicator.set_title('honk')
@@ -102,18 +100,18 @@ class HonkTray(Gtk.Application):
         if self.busy:
             return
         label, icon, can_start, can_stop = presentation(output, code)
-        self.status.set_label(label)
+        self.status.set_label(label + '（点击刷新）')
         self.indicator.set_icon_full('honk-' + icon, label)
-        self.start.set_sensitive(can_start)
-        self.stop.set_sensitive(can_stop)
-        self.restart.set_sensitive(can_stop)
+        self.start.set_visible(can_start)
+        self.stop.set_visible(can_stop)
+        self.restart.set_visible(can_stop)
 
     def action(self, verb):
         if self.busy or verb not in ('start', 'stop', 'restart'):
             return
         self.busy = True
         for item in (self.start, self.stop, self.restart):
-            item.set_sensitive(False)
+            item.hide()
         self.status.set_label('正在执行操作，必要时请完成权限认证…')
         self.runner([SYSTEMCTL, '--system', verb, UNIT], self.action_finished, timeout=180)
 
@@ -186,8 +184,13 @@ def self_test():
     def test(*_):
         def check():
             try:
-                assert app.start.get_sensitive() and not app.stop.get_sensitive()
+                assert app.status.get_sensitive()
+                assert app.start.get_visible() and not app.stop.get_visible()
+                app.received_state(0, 'LoadState=loaded\nActiveState=active\n', '')
+                assert not app.start.get_visible() and app.stop.get_visible()
+                assert app.restart.get_visible()
                 app.action('start')
+                assert not any(item.get_visible() for item in (app.start, app.stop, app.restart))
                 app.show_logs()
                 assert any('start' in command for command in calls)
                 assert any('--lines=200' in command for command in calls)
