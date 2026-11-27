@@ -55,6 +55,35 @@ nix build .#honk
 
 The `honk` binary name is also available as an alias of `honk-core`.
 
+### Desktop tray (Hyprland/Waybar, KDE and other StatusNotifier hosts)
+
+```nix
+services.honk-proxy = {
+  enable = true;
+  startAtBoot = false;
+  tray.enable = true;
+  # tray.uiUrl = "http://127.0.0.1:9527/ui/";
+};
+```
+
+The tray starts with `graphical-session.target` and provides service status,
+start/stop/restart, opening doona, and the latest 200 journal entries. It runs as
+your user; service control uses systemd's existing Polkit authentication and does
+not grant passwordless privileges. A graphical authentication agent must be
+running. Journal access follows your existing permissions (for example, the
+`wheel` or `systemd-journal` group on NixOS).
+
+Waybar needs its `tray` module, which this package does not configure. The green
+icon means **the service is running**, not that all traffic is proxied. Starting
+the tray does not start honk; quitting the tray does not stop honk. Lite/full UI
+selection remains in honk's configuration; the tray opens the configured URL.
+The tray stores no passwords or configuration, so it needs no extra persistence.
+
+After rebuilding, log in again or run `systemctl --user start honk-tray` in a
+graphical session. For compositors without `graphical-session.target`, launch
+`honk-tray` from the application menu or compositor startup instead. The program
+is single-instance per user session. You can also try `nix run .#honk-tray`.
+
 ### honk updates
 
 `Update honk and paired doona` checks daily at **10:53 Asia/Shanghai** (02:53 UTC,
@@ -156,4 +185,3 @@ NixOS module for normal operation. Builds verify ELF dependencies and daemon CLI
 startup. They do not verify interactive GUI, Polkit authentication or live TUN
 routing on your machine. Electron's sandbox is not disabled by this package.
 Upstream software retains its original license.
-

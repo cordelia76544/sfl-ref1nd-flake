@@ -16,6 +16,14 @@ in {
       default = true;
       description = "Start honk at boot; disable for manual systemctl start honk-core.";
     };
+    tray = {
+      enable = lib.mkEnableOption "a desktop tray for honk service controls and doona";
+      uiUrl = lib.mkOption {
+        type = lib.types.strMatching "https?://.+";
+        default = "http://127.0.0.1:9527/ui/";
+        description = "doona URL opened by the tray; does not change honk's listener.";
+      };
+    };
     configFile = lib.mkOption {
       type = lib.types.str;
       default = "/var/lib/honk/config.dae";
@@ -57,7 +65,20 @@ in {
       assertion = lib.hasPrefix "/" cfg.configFile && !(lib.hasPrefix builtins.storeDir cfg.configFile);
       message = "services.honk-proxy.configFile must be an absolute path outside the Nix store.";
     }];
-    environment.systemPackages = [ cfg.package ];
+    environment.systemPackages = [ cfg.package ]
+      ++ lib.optional cfg.tray.enable self.packages.${pkgs.stdenv.hostPlatform.system}.honk-tray;
+    security.polkit.enable = lib.mkIf cfg.tray.enable true;
+    systemd.user.services.honk-tray = lib.mkIf cfg.tray.enable {
+      description = "honk desktop tray";
+      wantedBy = [ "graphical-session.target" ];
+      partOf = [ "graphical-session.target" ];
+      after = [ "graphical-session.target" ];
+      serviceConfig = {
+        ExecStart = "${lib.getExe self.packages.${pkgs.stdenv.hostPlatform.system}.honk-tray} --ui-url ${lib.escapeShellArg cfg.tray.uiUrl}";
+        Restart = "on-failure";
+        RestartSec = 3;
+      };
+    };
     systemd.services.honk-core = {
       description = "honk proxy with embedded doona Web UI";
       wantedBy = lib.optional cfg.startAtBoot "multi-user.target";
