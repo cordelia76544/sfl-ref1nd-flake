@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=honk Tray
+Name[zh_CN]=honk 托盘
+Comment=Control honk and open doona
+Exec=honk-tray
+Icon=honk-stopped
+Terminal=false
+Categories=Network;
+StartupNotify=false

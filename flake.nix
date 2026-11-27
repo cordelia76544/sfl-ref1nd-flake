@@ -8,6 +8,7 @@
     packages = each (system: let pkgs = import nixpkgs { inherit system; }; in rec {
       sfl = pkgs.callPackage ./package.nix {};
       honk = pkgs.callPackage ./honk/package.nix {};
+      honk-tray = pkgs.callPackage ./honk/tray/package.nix {};
       default = sfl;
     });
     checks = each (system: let
@@ -15,6 +16,7 @@
     in {
       package = self.packages.${system}.default;
       honk = self.packages.${system}.honk;
+      honk-tray = self.packages.${system}.honk-tray.tests.smoke;
       honk-module = import ./tests/honk-module.nix { inherit self nixpkgs pkgs system; };
     });
     nixosModules.honk = import ./honk/module.nix self;
@@ -37,4 +39,3 @@
     };
   };
 }
-
